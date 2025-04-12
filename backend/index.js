@@ -1,14 +1,19 @@
 // server.js
 const express = require('express');
 const mongoose = require('mongoose');
-
+require('dotenv').config();
+const cors = require('cors');
 const WebSocket = require('ws');
 const app = express();
 const port = 5001;
+
+
 app.use(express.json());
+app.use(cors());
+
 // MongoDB connection
-const wss = new WebSocket.Server({ port: 8080 });
-mongoose.connect('mongodb+srv://buddy:buddy123@mernapp.uhi0i9o.mongodb.net/?retryWrites=true&w=majority&appName=MERNapp', { useNewUrlParser: true, useUnifiedTopology: false })
+const wss = new WebSocket.Server({ port: process.env.MONGO_CHNG_WS_PORT });
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: false })
   .then(() => console.log("Connected to MongoDB"))
   .catch(err => console.log("Failed to connect to MongoDB", err));
 
@@ -23,7 +28,7 @@ const Data = mongoose.model('Datavalue', DataSchema);
 // Real-time data API (example GET)
 app.get('/api/getdata', async (req, res) => {
   try {
-    const data = await Data.find(); // Get all data
+    const data = await RealTimeData.find(); // Get all data
     res.json(data);
   } catch (error) {
     res.status(500).send("Error fetching data");
@@ -44,7 +49,7 @@ const DataSchem = new mongoose.Schema({
   const RealTimeData = mongoose.model('RealTimeData', DataSchem);
   
   // Connect to WebSocket source (the one sending you real-time data)
-  const ws = new WebSocket('ws://10.200.16.221:8765'); // Replace with your actual socket address
+  const ws = new WebSocket(process.env.STREAM_WS_URI); // Replace with your actual socket address
   
   let latestData = null;
   
