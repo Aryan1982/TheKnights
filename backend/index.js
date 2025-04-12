@@ -51,33 +51,33 @@ const DataSchem = new mongoose.Schema({
   // Connect to WebSocket source (the one sending you real-time data)
   const ws = new WebSocket(process.env.STREAM_WS_URI); // Replace with your actual socket address
   
-  let latestData = null;
+  // let latestData = null;
   
-  ws.on('open', () => {
-    console.log('🌐 Connected to source WebSocket (8765)');
-  });
+  // ws.on('open', () => {
+  //   console.log('🌐 Connected to source WebSocket (8765)');
+  // });
   
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message.toString());
+  // ws.on('message', (message) => {
+  //   try {
+  //     const data = JSON.parse(message.toString());
   
-      // Clean and format data
-      latestData = {
-        UDI: data.UDI,
-        product_id: data['Product ID'],
-        type: data.Type,
-        air_temperature: parseFloat(data['Air temperature [K\r\n]'] || data['Air temperature [K]']),
-        process_temperature: parseFloat(data['Process temperature [K\r\n]'] || data['Process temperature [K]']),
-        rotational_speed: parseFloat(data['Rotational speed [rpm\r\n]'] || data['Rotational speed [rpm]']),
-        torque: parseFloat(data['Torque [Nm\r\n]'] || data['Torque [Nm]']),
-        tool_wear: parseFloat(data['Tool wear [min\r\n]'] || data['Tool wear [min]']),
-        timestamp: new Date(data.timestamp),
-      };
+  //     // Clean and format data
+  //     latestData = {
+  //       UDI: data.UDI,
+  //       product_id: data['Product ID'],
+  //       type: data.Type,
+  //       air_temperature: parseFloat(data['Air temperature [K\r\n]'] || data['Air temperature [K]']),
+  //       process_temperature: parseFloat(data['Process temperature [K\r\n]'] || data['Process temperature [K]']),
+  //       rotational_speed: parseFloat(data['Rotational speed [rpm\r\n]'] || data['Rotational speed [rpm]']),
+  //       torque: parseFloat(data['Torque [Nm\r\n]'] || data['Torque [Nm]']),
+  //       tool_wear: parseFloat(data['Tool wear [min\r\n]'] || data['Tool wear [min]']),
+  //       timestamp: new Date(data.timestamp),
+  //     };
   
-    } catch (err) {
-      console.error('❌ Error parsing message:', err.message);
-    }
-  });
+  //   } catch (err) {
+  //     console.error('❌ Error parsing message:', err.message);
+  //   }
+  // });
   
   // Save latest data to MongoDB every 3 seconds
   setInterval(async () => {
