@@ -6,10 +6,9 @@ const cors = require('cors');
 const WebSocket = require('ws');
 const app = express();
 const port = 5001;
-
-
 app.use(express.json());
 app.use(cors());
+const Maintenance = require('./models/Maintenance');
 
 const machineRoutes = require('./routes/machineRoutes');
 app.use('/api/machines', machineRoutes);
@@ -133,7 +132,64 @@ app.post('/api/data', express.json(), async (req, res) => {
     res.status(500).send("Error creating data");
   }
 });
+app.post('/api/maintenance', async (req, res) => {
+  try {
+    const data = req.body;
+    const maintenance = new Maintenance(data);
+    await maintenance.save();
+    res.status(201).json(maintenance);
+  } catch (error) {
+    console.error("Error saving maintenance:", error);
+    res.status(500).send("Error saving maintenance data");
+  }
+});
 
+// Get all maintenance records
+app.get('/api/maintenance', async (req, res) => {
+  try {
+    const records = await Maintenance.find().sort({ createdAt: -1 });
+    res.json(records);
+  } catch (error) {
+    res.status(500).send("Error fetching maintenance data");
+  }
+});
+
+// Get a single maintenance record by ID
+app.get('/api/maintenance/:id', async (req, res) => {
+  try {
+    const record = await Maintenance.findById(req.params.id);
+    if (!record) return res.status(404).send("Maintenance record not found");
+    res.json(record);
+  } catch (error) {
+    res.status(500).send("Error fetching maintenance record");
+  }
+});
+
+// Update a maintenance record by ID
+app.put('/api/maintenance/:id', async (req, res) => {
+  try {
+    const updated = await Maintenance.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updated) return res.status(404).send("Record not found");
+    res.json(updated);
+  } catch (error) {
+    res.status(500).send("Error updating record");
+  }
+});
+
+// Delete a maintenance record by ID
+app.delete('/api/maintenance/:id', async (req, res) => {
+  try {
+    const deleted = await Maintenance.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).send("Record not found");
+    res.send("Record deleted");
+  } catch (error) {
+    res.status(500).send("Error deleting record");
+  }
+});
 app.listen(port, () => {
   console.log(`Node.js server is running on http://localhost:${port}`);
 });
