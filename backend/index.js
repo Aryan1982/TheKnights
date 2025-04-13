@@ -93,7 +93,7 @@ function connectWebSocket() {
         };
 
         // Send data to FastAPI
-        const response = await axios.post('http://104.154.215.145:3000/getPred/cnc/', predictionInput);
+        const response = await axios.post('http://34.59.81.216:3000/getPred/cnc/', predictionInput);
 
         if (response.data && response.data.prediction !== undefined) {
           const predictionValue = response.data.prediction;
@@ -182,7 +182,7 @@ function connectWeldingSocket() {
           "current": data["current"],
         };
 
-        const response = await axios.post('http://104.154.215.145:3000/getPred/welding', predictionInput);
+        const response = await axios.post('http://34.59.81.216:3000/getPred/welding/', predictionInput);
 
         if (response.data && response.data.prediction !== undefined) {
           const predictionValue = response.data.prediction;
@@ -270,7 +270,7 @@ function connectPumpSocket() {
           oil_viscosity: data["oil_viscosity"],
         };
 
-        const response = await axios.post('http://104.154.215.145:3000/getPred/pump', predictionInput);
+        const response = await axios.post('http://34.59.81.216:3000/getPred/pump/', predictionInput);
 
         if (response.data && response.data.prediction !== undefined) {
           const predictionValue = response.data.prediction;
