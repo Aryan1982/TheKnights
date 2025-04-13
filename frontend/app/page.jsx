@@ -50,10 +50,10 @@ const overviewData = {
 const machineHealthData = [
   { name: "CNC Milling Machine", value: 92 },
   { name: "Assembly Robot", value: 78 },
-  { name: "Packaging System", value: 65 },
-  { name: "Conveyor Belt A", value: 88 },
-  { name: "Injection Molding Machine", value: 45 },
-  { name: "Welding Robot", value: 0 },
+  // { name: "Packaging System", value: 65 },
+  // { name: "Conveyor Belt A", value: 88 },
+  // { name: "Injection Molding Machine", value: 45 },
+  // { name: "Welding Robot", value: 0 },
 ]
 
 const statusDistributionData = [
@@ -255,7 +255,7 @@ export default function HomePage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Status Distribution</CardTitle>
                 <CardDescription>Machine status breakdown</CardDescription>
@@ -292,7 +292,7 @@ export default function HomePage() {
                   ))}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </TabsContent>
         <TabsContent value="analytics" className="space-y-6">
@@ -419,7 +419,7 @@ export default function HomePage() {
           </div>
         </TabsContent>
       </Tabs>
-
+{/* 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-2">
           <CardHeader>
@@ -522,7 +522,7 @@ export default function HomePage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   )
 }

@@ -8,3 +8,7 @@ frontend/.env
 
 backend/node_modules/
 backend/.env
+
+# ml_server
+ml_server/models
+ml_server/venv

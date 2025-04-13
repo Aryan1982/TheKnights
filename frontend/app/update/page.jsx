@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter,useSearchParams } from "next/navigation"
 import { ArrowLeft, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,9 @@ import { useToast } from "@/components/ui/use-toast"
 export default function UpdatePage() {
   const router = useRouter()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id')
+
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     machineName: "",
@@ -25,6 +28,74 @@ export default function UpdatePage() {
     notes: "",
     status: "operational",
   })
+  const [machines, setMachines] = useState([])
+
+  useEffect(() => {
+    console.log(id)
+    fetchMachines()
+    if(id){
+      getMaintenanceData()
+    }
+  }, [])
+
+  const fetchMachines = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/machines')
+      const data = await response.json()
+      setMachines(data)
+    } catch (error) {
+      console.error('Error fetching machines:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch machine list",
+        variant: "destructive"
+      })
+    }
+  }
+  const getMaintenanceData = async () => {
+    if (!id) return
+
+    setIsLoading(true)
+    try {
+      const res = await fetch(`http://localhost:5001/api/maintenance/${id}`)
+      if (!res.ok) throw new Error('Failed to fetch maintenance data')
+      
+      const data = await res.json()
+      console.log(data)
+      handleSelectMachine(data.machineId)
+      setFormData({
+        machineName: data.machineName || '',
+        machineId: data.machineId || '',
+        machineType: data.machineType || '',
+        lastMaintenanceDate: data.lastMaintenanceDate ? new Date(data.lastMaintenanceDate) : new Date(),
+        nextMaintenanceDate: data.nextMaintenanceDate ? new Date(data.nextMaintenanceDate) : new Date(),
+        notes: data.notes || '',
+        status: data.status || 'operational',
+      })
+     
+    } catch (error) {
+      console.error('Error fetching maintenance data:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    getMaintenanceData()
+  }, [id])
+
+  const handleSelectMachine = (machineId) => {
+    const selectedMachine = machines.find(machine => machine._id === machineId)
+    console.log(selectedMachine,machines, 'sm')
+    if (selectedMachine) {
+      setFormData(prev => ({
+        ...prev,
+        machineId: selectedMachine._id,
+        machineName: selectedMachine.machineName,
+        machineType: selectedMachine.machineType
+      }))
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -48,21 +119,50 @@ export default function UpdatePage() {
     }))
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      toast({
-        title: "Maintenance record updated",
-        description: `Updated maintenance schedule for ${formData.machineName}`,
-      })
-      router.push("/maintenance")
-    }, 1500)
-  }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    if(id){
+      try {
+        const response = await fetch(`http://localhost:5001/api/maintenance/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+      } catch (error) {
+        console.error('Error submitting form:', error);
+      }
+      router.push('/maintenance')
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const response = await fetch('http://localhost:5001/api/maintenance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+  
+      const data = await response.json();
+      console.log('Response:', data);
+      
+      if (response.ok) {
+        router.push('/maintenance')
+        // Handle success (e.g., show success message, clear form, etc.)
+      } else {
+        // Handle errors (e.g., show error message)
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -82,7 +182,7 @@ export default function UpdatePage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="machineName">Machine Name</Label>
                 <Input
                   id="machineName"
@@ -92,19 +192,23 @@ export default function UpdatePage() {
                   placeholder="Enter machine name"
                   required
                 />
-              </div>
+              </div> */}
               <div className="space-y-2">
-                <Label htmlFor="machineId">Machine ID</Label>
-                <Input
-                  id="machineId"
-                  name="machineId"
-                  value={formData.machineId}
-                  onChange={handleChange}
-                  placeholder="Enter machine ID"
-                  required
-                />
+                <Label htmlFor="machineId">Select Machine</Label>
+                <Select onValueChange={handleSelectMachine}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a machine" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {machines.map(machine => (
+                      <SelectItem key={machine._id} value={machine._id}>
+                        {machine.machineName} ({machine._id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="machineType">Machine Type</Label>
                 <Select
                   value={formData.machineType}
@@ -121,7 +225,7 @@ export default function UpdatePage() {
                     <SelectItem value="conveyor">Conveyor System</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>

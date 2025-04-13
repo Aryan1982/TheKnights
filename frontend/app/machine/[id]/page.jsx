@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect,useRef } from "react"
+import { useRouter,useParams } from "next/navigation"
 import { ArrowLeft, Calendar, Clock, Settings, PenToolIcon as Tool, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import * as constants from "@/constants"
 import {
   LineChart,
   Line,
@@ -19,79 +20,113 @@ import {
   PieChart,
   Pie,
   Cell,
+  Scatter,
 } from "recharts"
 
-// Sample data
-const temperatureData = [
-  { time: "00:00", value: 72 },
-  { time: "04:00", value: 70 },
-  { time: "08:00", value: 75 },
-  { time: "12:00", value: 82 },
-  { time: "16:00", value: 85 },
-  { time: "20:00", value: 78 },
-  { time: "24:00", value: 74 },
-]
-
-const vibrationData = [
-  { time: "00:00", value: 0.5 },
-  { time: "04:00", value: 0.6 },
-  { time: "08:00", value: 1.2 },
-  { time: "12:00", value: 0.8 },
-  { time: "16:00", value: 0.7 },
-  { time: "20:00", value: 1.5 },
-  { time: "24:00", value: 0.9 },
-]
-
-const maintenanceData = [
-  { name: "Completed", value: 8, color: "#10b981" },
-  { name: "Scheduled", value: 3, color: "#3b82f6" },
-  { name: "Overdue", value: 1, color: "#ef4444" },
-]
-
-const COLORS = ["#10b981", "#3b82f6", "#ef4444"]
-
-const machines = {
-  "machine-1": {
-    id: "machine-1",
-    name: "CNC Milling Machine",
-    type: "CNC",
-    status: "operational",
-    health: 92,
-    lastMaintenance: "2023-10-15",
-    nextMaintenance: "2023-12-15",
-    alerts: [{ id: 1, type: "warning", message: "Vibration levels increasing", timestamp: "2023-11-10 08:23" }],
-  },
-  "machine-2": {
-    id: "machine-2",
-    name: "Assembly Robot",
-    type: "Robot",
-    status: "warning",
-    health: 78,
-    lastMaintenance: "2023-09-20",
-    nextMaintenance: "2023-11-20",
-    alerts: [
-      { id: 1, type: "warning", message: "Motor temperature above normal", timestamp: "2023-11-09 14:45" },
-      { id: 2, type: "warning", message: "Calibration recommended", timestamp: "2023-11-08 09:30" },
-    ],
-  },
-}
-
-export default function MachinePage({ params }) {
+export default function MachinePage() {
   const router = useRouter()
+  const params = useParams()
+  const { id } = params
+  const [Healthdata, sethealthData] =useState()
   const [machine, setMachine] = useState(null)
   const [loading, setLoading] = useState(true)
-
+  const [temperatureData, setTemperatureData] = useState([])
+  const { torqueData, rotationalSpeedData } = useRealtimeSensorData();
+  const [torqueData2, setTorqueData] = useState([])
+  const [rotationalSpeedData2, setRotationalSpeedData] = useState([])
   useEffect(() => {
     // Simulate API fetch
     setTimeout(() => {
-      const machineData = machines[params.id]
-      if (machineData) {
-        setMachine(machineData)
+      if(id){
+        getMachine();
       }
       setLoading(false)
     }, 500)
-  }, [params.id])
+  }, [id])
 
+  useEffect(() => {
+    console.log(machine, 'machine state updated');
+  }, [machine]);
+
+  const getMachine = () => {
+    fetch(`http://localhost:5001/api/machines/${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data, 'machine');
+        setMachine(data);
+        getMaintenance(data); // 👈 Pass machine data directly
+      })
+      .catch((err) => console.error(err));
+  };
+  
+  const getMaintenance = (machineData) => {
+    fetch(`http://localhost:5001/api/maintenance/`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        const maintenance = data.find(
+          (item) =>
+            item.machineId == id
+        );
+        const updatedMachine = { ...machineData, maintenance };
+        setMachine(updatedMachine);
+        console.log(machine, 'maintenance');
+      })
+      .catch((err) => console.error(err));
+  };
+    const getRealtimeMachineData = () => {
+    const socket = new WebSocket('ws://localhost:8080');
+  
+    socket.onopen = () => {
+      console.log('✅ WebSocket connection established');
+    };
+  
+   socket.onmessage = (event) => {
+  console.log('📨 Data received:', event.data);
+
+  // Parse the received data into an array
+  const dataArray = JSON.parse(event.data);
+
+  // Iterate over each item in the array and extract the necessary value
+  setTemperatureData([])
+  setTorqueData([])
+  setRotationalSpeedData([])
+  dataArray.forEach(item => {
+    setTemperatureData(prev => [
+      ...prev, 
+      { 
+        time: new Date().toLocaleTimeString(), 
+        value: item.air_temperature 
+      }
+    ]);
+    setTorqueData(prev => [
+      ...prev, 
+      { 
+        time: new Date().toLocaleTimeString(), 
+        value: item.torque 
+      }
+    ]);
+    setRotationalSpeedData(prev => [
+      ...prev, 
+      { 
+        time: new Date().toLocaleTimeString(), 
+        value: item.rotational_speed 
+      }
+    ]);
+  });
+
+  console.log(dataArray, "temperature data"); // Debug log to see all data
+};
+
+    socket.onerror = (error) => {
+      console.error('❌ WebSocket error:', error);
+    };
+    
+    socket.onclose = () => {
+      console.log('🔌 WebSocket connection closed');
+    };
+  }
+  
   if (loading) {
     return (
       <div className="container mx-auto py-6 flex items-center justify-center min-h-[50vh]">
@@ -165,53 +200,89 @@ export default function MachinePage({ params }) {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{machine.name}</h1>
+            <h1 className="text-2xl font-bold">{machine.machineName}</h1>
             <div className="flex items-center gap-2 mt-1">
               <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(machine.status)}`}></div>
-              <span className="text-sm text-muted-foreground">{machine.id}</span>
+              <span className="text-sm text-muted-foreground">{machine.machineId}</span>
               {getStatusBadge(machine.status)}
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push(`/update?id=${machine.id}`)}>
+          <Button variant="outline" onClick={() => router.push(`/update?id=${machine._id}`)}>
             <Settings className="h-4 w-4 mr-2" />
             Settings
           </Button>
-          <Button onClick={() => router.push(`/maintenance?machine=${machine.id}`)}>
+          <Button onClick={() => router.push(`/maintenance?machine=${machine._id}`)}>
             <Tool className="h-4 w-4 mr-2" />
             Schedule Maintenance
           </Button>
         </div>
       </div>
 
+    
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card className="col-span-3">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Machine Health</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{machine.health}%</div>
-            <Progress value={machine.health} className="h-2 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">
-              {machine.health > 90
-                ? "Excellent condition"
-                : machine.health > 75
-                  ? "Good condition"
-                  : machine.health > 50
-                    ? "Needs attention"
-                    : "Critical condition"}
-            </p>
-          </CardContent>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={Healthdata.filter((data)=>data.machineId == machine._id)}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="time" />
+                            <YAxis domain={[280, 310]} />
+                            <Tooltip />
+                            {/* Actual Temperature */}
+                            {/* <Line
+                              type="monotone"
+                              dataKey="value"
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              name="Actual Health"
+                            /> */}
+                            {/* Predicted Temperature */}
+                            <Line
+                              // type="monotone"
+                              // dataKey="predicted"
+                              // stroke="#10b981"
+                              // strokeDasharray="5 5"
+                              // strokeWidth={2}
+                              name="Predicted Health"
+                              dataKey="value"
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                            />
+                            {/* Anomalies */}
+                            <Scatter
+                              data={Healthdata.filter((d) => d.isAnomaly)}
+                              fill="#ef4444"
+                              shape="triangle"
+                              name="Anomaly"
+                            />
+                            {/* Crash Prediction */}
+                            <Scatter
+                              data={Healthdata.filter((d) => d.willCrash)}
+                              fill="#f59e0b"
+                              shape="star"
+                              name="Potential Crash"
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Last Maintenance</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {machine.maintenance && (
+          <>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Last Maintenance</CardTitle>
+            </CardHeader>
+            <CardContent>
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-              <div className="text-lg font-medium">{machine.lastMaintenance}</div>
+              <div className="text-lg font-medium">{machine.maintenance.lastMaintenanceDate && new Date(machine.maintenance.lastMaintenanceDate).toLocaleString()}</div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">Performed routine maintenance and calibration</p>
           </CardContent>
@@ -223,15 +294,18 @@ export default function MachinePage({ params }) {
           <CardContent>
             <div className="flex items-center">
               <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-              <div className="text-lg font-medium">{machine.nextMaintenance}</div>
+              <div className="text-lg font-medium">{machine.maintenance?.nextMaintenanceDate &&
+    new Date(machine.maintenance.nextMaintenanceDate).toLocaleString()}</div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {new Date(machine.nextMaintenance) < new Date()
+              {new Date(machine.maintenance.nextMaintenanceDate) < new Date()
                 ? "Maintenance overdue"
-                : `${Math.ceil((new Date(machine.nextMaintenance) - new Date()) / (1000 * 60 * 60 * 24))} days remaining`}
+                : `${Math.ceil((new Date(machine.maintenance.nextMaintenanceDate) - new Date()) / (1000 * 60 * 60 * 24))} days remaining`}
             </p>
           </CardContent>
         </Card>
+        </>
+        )}
       </div>
 
       <Tabs defaultValue="performance">
@@ -242,7 +316,7 @@ export default function MachinePage({ params }) {
         </TabsList>
         <TabsContent value="performance" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Temperature (°F)</CardTitle>
                 <CardDescription>24-hour temperature readings</CardDescription>
@@ -253,9 +327,28 @@ export default function MachinePage({ params }) {
                     <LineChart data={temperatureData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="time" />
-                      <YAxis />
+                      <YAxis domain={[280, 310]} />
                       <Tooltip />
                       <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card> */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Torque (Nm)</CardTitle>
+                <CardDescription>24-hour torque readings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={torqueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -263,16 +356,16 @@ export default function MachinePage({ params }) {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Vibration (mm/s)</CardTitle>
-                <CardDescription>24-hour vibration readings</CardDescription>
+                <CardTitle>Rotational Speed (rpm)</CardTitle>
+                <CardDescription>24-hour rotational speed readings</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={vibrationData}>
+                    <LineChart data={rotationalSpeedData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="time" />
-                      <YAxis />
+                      <YAxis domain={[1200, 2000]} />
                       <Tooltip />
                       <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} />
                     </LineChart>
@@ -333,7 +426,7 @@ export default function MachinePage({ params }) {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Maintenance Overview</CardTitle>
                 <CardDescription>Last 12 months</CardDescription>
@@ -371,7 +464,7 @@ export default function MachinePage({ params }) {
                   ))}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </TabsContent>
         <TabsContent value="alerts">

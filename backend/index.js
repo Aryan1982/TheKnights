@@ -28,13 +28,63 @@ const wss = new WebSocket.Server({ port: process.env.MONGO_CHNG_WS_PORT });
 // Real-time data save to DB
 let latestData = null;
 
-function saveRealTimeData(machineType) {
-  setInterval(async () => {
-    if (latestData) {
+function connectWebSocket() {
+  try {
+    ws = new WebSocket(process.env.STREAM_WS_URI);
+
+    ws.on('open', () => {
+      console.log('🌐 Connected to WebSocket:', process.env.STREAM_WS_URI);
+      console.log('🌐 Connected to WebSocket:', process.env.STREAM_WS_URI);
+    });
+
+    ws.on('message', (message) => {
       try {
-        const entry = new RealTimeData(latestData);
-        await entry.save();
-        console.log(`✅ Data saved for ${machineType} at ${new Date().toLocaleTimeString()}`);
+        const data = JSON.parse(message.toString());
+
+        // Clean and format data
+        latestData = {
+          UDI: data.UDI,
+          product_id: data['Product ID'],
+          type: data.Type,
+          air_temperature: parseFloat(data['Air temperature [K\r\n]'] || data['Air temperature [K]']),
+          process_temperature: parseFloat(data['Process temperature [K\r\n]'] || data['Process temperature [K]']),
+          rotational_speed: parseFloat(data['Rotational speed [rpm\r\n]'] || data['Rotational speed [rpm]']),
+          torque: parseFloat(data['Torque [Nm\r\n]'] || data['Torque [Nm]']),
+          tool_wear: parseFloat(data['Tool wear [min\r\n]'] || data['Tool wear [min]']),
+          timestamp: new Date(data.timestamp),
+        };
+
+      } catch (err) {
+        console.error('❌ Error parsing WebSocket message:', err.message);
+      }
+    });
+
+    ws.on('error', (err) => {
+      console.error('⚠️ WebSocket error:', err.message);
+      // No need to throw — just log and continue
+    });
+
+    ws.on('close', () => {
+      console.warn('🔌 WebSocket closed. Reconnecting in 5 seconds...');
+      setTimeout(connectWebSocket, 500000); // Try to reconnect
+    });
+
+  } catch (err) {
+    console.error('❌ Failed to initialize WebSocket:', err.message);
+    setTimeout(connectWebSocket, 5000); // Retry after delay
+  }
+}
+
+// Initialize once
+connectWebSocket();
+
+// Save latest data to MongoDB every 5 seconds
+setInterval(async () => {
+  if (latestData) {
+    try {
+      const entry = new RealTimeData(latestData);
+      await entry.save();
+      console.log(`✅ Data saved at ${new Date().toLocaleTimeString()}`);
 
         // Clean up: keep only the latest 25
         const count = await RealTimeData.countDocuments();
@@ -54,7 +104,7 @@ function saveRealTimeData(machineType) {
       }
     }
   }, 5000);
-}
+
 
 function connectWebSocket() {
   try {

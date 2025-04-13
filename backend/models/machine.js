@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const machineSchema = new mongoose.Schema({
   machineName: { type: String, required: true },
-  machineId: { type: String, required: true, unique: true },
   machineType: { type: String },
   manufacturer: { type: String },
   model: { type: String },

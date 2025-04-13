@@ -17,7 +17,6 @@ export default function AddMachinePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     machineName: "",
-    machineId: "",
     machineType: "",
     manufacturer: "",
     model: "",
@@ -46,15 +45,41 @@ export default function AddMachinePage() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+   const newMachine = {
+      machineName: formData.machineName,
+      machineId: formData.machineId,
+      machineType: formData.machineType,
+      manufacturer: formData.manufacturer,
+      model: formData.model,
+      serialNumber: formData.serialNumber,
+      installationDate: formData.installationDate,
+      notes: formData.notes,
+      status: formData.status,
+    }
+    fetch('http://localhost:5001/api/machines', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newMachine),
+    })
+    .then((res) => res.json())
+    .then(() => {
       setIsLoading(false)
       toast({
         title: "Machine added",
         description: `${formData.machineName} has been added to your inventory.`,
       })
       router.push("/machines")
-    }, 1500)
+    })
+    .catch((err) => {
+      setIsLoading(false)
+      toast({
+        title: "Error",
+        description: "Failed to add machine.",
+        variant: "destructive",
+      })
+    })
   }
 
   return (
@@ -87,7 +112,7 @@ export default function AddMachinePage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="machineId">Machine ID*</Label>
                 <Input
                   id="machineId"
@@ -97,7 +122,7 @@ export default function AddMachinePage() {
                   placeholder="Enter machine ID"
                   required
                 />
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <Label htmlFor="machineType">Machine Type*</Label>
                 <Select

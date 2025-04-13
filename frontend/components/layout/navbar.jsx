@@ -77,7 +77,7 @@ export function Navbar() {
           : "bg-background"
       }`}
     >
-      <div className="container flex h-14 items-center">
+      <div className="container flex h-14 items-center gap-5">
         <div className="mr-4 flex">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <Activity className="h-6 w-6" />
@@ -134,7 +134,7 @@ export function Navbar() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             className="relative"
@@ -144,7 +144,7 @@ export function Navbar() {
             <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-red-500">
               3
             </Badge>
-          </Button>
+          </Button> */}
           <Button
             variant="ghost"
             size="icon"
@@ -159,10 +159,10 @@ export function Navbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1">
                 <span className="hidden sm:inline-block">Admin</span>
-                <ChevronDown className="h-4 w-4" />
+                {/* <ChevronDown className="h-4 w-4" /> */}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            {/* <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
@@ -175,7 +175,7 @@ export function Navbar() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Log out</DropdownMenuItem>
-            </DropdownMenuContent>
+            </DropdownMenuContent> */}
           </DropdownMenu>
         </div>
       </div>
