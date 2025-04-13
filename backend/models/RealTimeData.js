@@ -1,0 +1,27 @@
+const mongoose = require('mongoose');
+const DataSchema = new mongoose.Schema({
+    UDI: String,
+    product_id: String,
+    machineId: String,
+    machineType: String, // 'cnc' or 'welding'
+    type: String,
+    air_temperature: Number,
+    process_temperature: Number,
+    vibration_rms: Number,
+    temperature: Number,
+    pressure: Number,
+    rotational_speed: Number,
+    torque: Number,
+    current: Number,
+    pressure_psi: Number,
+    flow_rate_gpm: Number,
+    temperature_celsius: Number,
+    vibration_mm_s: Number,
+    power_consumption_kw: Number,
+    noise_level_db: Number,
+    oil_viscosity: Number,
+    tool_wear: Number,
+    timestamp: Date,
+  });
+  
+  module.exports = mongoose.model('RealTimeData', DataSchema);
