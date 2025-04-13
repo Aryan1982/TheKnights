@@ -23,7 +23,23 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
   .catch(err => console.log("Failed to connect to MongoDB", err));
 
 // WebSocket setup
-const wss = new WebSocket.Server({ port: process.env.MONGO_CHNG_WS_PORT });
+const wsss = new WebSocket.Server({ port: process.env.MONGO_CHNG_WS_PORT });
+// const wss = new WebSocket.Server({ port: process.env.MONGO_CHNG_WS_PORT });
+
+
+
+wsss.on('connection', (ws) => {
+  console.log("Client connected via WebSocket");
+
+  // Send data every 5 seconds
+  setInterval(async () => {
+    const data = await RealTimeData.find().sort({ timestamp: -1 });  // Fetch data from MongoDB
+    ws.send(JSON.stringify(data));
+    // console.log(JSON.stringify(data));
+      // Send data to client
+  }, 3000);  // Send data every 5 seconds
+});
+
 
 // Real-time data save to DB
 let latestData = null;
@@ -94,13 +110,13 @@ function connectWebSocket() {
         // Send data to FastAPI
         const response = await axios.post('http://34.59.81.216:3000/getPred/cnc/', predictionInput);
 
-        if (response.data && response.data.prediction !== undefined) {
+        if (response.data) {
           const predictionValue = response.data.prediction;
           const status = response.data.status;
           const diagnosis = response.data.diagnosis;
 
           // If prediction < 93%, save anomaly to DB
-          if (predictionValue < 93) {
+          if (status==="working" ||predictionValue < 93) {
             const anomaly = new HealthAnomaly({
               UDI: data.UDI,
               product_id: data["Product ID"],
@@ -183,13 +199,13 @@ function connectWeldingSocket() {
 
         const response = await axios.post('http://34.59.81.216:3000/getPred/welding/', predictionInput);
 
-        if (response.data && response.data.prediction !== undefined) {
+        if (response.data) {
           const predictionValue = response.data.prediction;
           const status = response.data.status;
           const diagnosis = response.data.diagnosis;
 
           // If prediction < 93%, save anomaly to DB
-          if (predictionValue < 93) {
+          if (status===predictionValue < 93) {
             const anomaly = new HealthAnomaly({
               machineId: '67fb59f5858e726dd728b277',  // Example machine ID for welding
               machineType: 'welding',
@@ -273,14 +289,15 @@ function connectPumpSocket() {
         const response = await axios.post('http://34.59.81.216:3000/getPred/pump/', predictionInput);
 
 
-        if (response.data && response.data.prediction !== undefined) {
+
+        if (response.data ) {
           const predictionValue = response.data.prediction;
           const status = response.data.status;
           const diagnosis = response.data.diagnosis;
 console.log(diagnosis,"ggg");
 
           // If prediction < 93%, save anomaly to DB
-          if (predictionValue < 93) {
+          if (status==="working" ||  predictionValue < 93) {
             const anomaly = new HealthAnomaly({
               machineId: 'pump-5678',  // Example machine ID for pump
               machineType: 'pump',
