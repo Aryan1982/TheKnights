@@ -15,7 +15,7 @@ app.use('/api/machines', machineRoutes);
 
 // MongoDB connection
 const wss = new WebSocket.Server({ port: process.env.MONGO_CHNG_WS_PORT });
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: false })
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: false, useUnifiedTopology: true, })
   .then(() => console.log("Connected to MongoDB"))
   .catch(err => console.log("Failed to connect to MongoDB", err));
 
@@ -59,7 +59,7 @@ function connectWebSocket() {
     ws = new WebSocket(process.env.STREAM_WS_URI);
 
     ws.on('open', () => {
-      console.log('🌐 Connected to WebSocket:', STREAM_WS_URI);
+      console.log('🌐 Connected to WebSocket:', process.env.STREAM_WS_URI);
     });
 
     ws.on('message', (message) => {
@@ -110,11 +110,27 @@ setInterval(async () => {
       const entry = new RealTimeData(latestData);
       await entry.save();
       console.log(`✅ Data saved at ${new Date().toLocaleTimeString()}`);
+
+      // Clean up: keep only the latest 25
+      const count = await RealTimeData.countDocuments();
+      if (count > 25) {
+        const toDelete = count - 25;
+        await RealTimeData.find({})
+          .sort({ timestamp: 1 })
+          .limit(toDelete)
+          .then(async (docs) => {
+            const ids = docs.map((doc) => doc._id);
+            await RealTimeData.deleteMany({ _id: { $in: ids } });
+            console.log(`🗑️ Deleted ${toDelete} old record(s)`);
+          });
+      }
+
     } catch (error) {
       console.error('❌ Error saving to MongoDB:', error.message);
     }
   }
 }, 5000);
+
 wss.on('connection', (ws) => {
     console.log("Client connected via WebSocket");
   
@@ -126,21 +142,7 @@ wss.on('connection', (ws) => {
         // Send data to client
     }, 3000);  // Send data every 5 seconds
   });
-// const changeStream = Data.watch();
 
-// // When a change occurs, trigger this function
-// changeStream.on('change', (change) => {
-//   console.log('Change detected:', change);
-//   // You can send the updated data to a WebSocket or an API to notify the frontend
-// });
-
-app.get('/test', async (req, res) => {
-  try {
-    res.status(200).send("Test endpoint is working!");
-  } catch (error) {
-    res.status(500).send("Error fetching data");
-  }
-});
 
 // POST example to insert data
 app.post('/api/data', express.json(), async (req, res) => {
@@ -209,6 +211,76 @@ app.delete('/api/maintenance/:id', async (req, res) => {
     res.send("Record deleted");
   } catch (error) {
     res.status(500).send("Error deleting record");
+  }
+});
+const axios = require('axios');
+const HealthAnomaly = require('./models/healthAnamoly'); // adjust path if needed
+
+ws.on('message', async (message) => {
+  try {
+    const data = JSON.parse(message.toString());
+
+    // Format data for FastAPI
+    const predictionInput = {
+      "UDI": data.UDI,
+      "Type": 1, // Adjust this if you have type mapping logic
+      "Air temperature [K]": String(data["Air temperature [K]"]),
+      "Process temperature [K]": String(data["Process temperature [K]"]),
+      "Rotational speed [rpm]": String(data["Rotational speed [rpm]"]),
+      "Torque [Nm]": String(data["Torque [Nm]"]),
+      "Tool wear [min]": String(data["Tool wear [min]"])
+    };
+
+    // Send to FastAPI
+    const { UDI, ...featuresOnly } = predictionInput;
+    const response = await axios.post('http://127.0.0.1:3000/getPred/mod1/', featuresOnly);
+
+    if (response.data && response.data.prediction !== undefined) {
+      const predictionValue = response.data.prediction;
+      console.log(`🔍 Health prediction: ${predictionValue.toFixed(2)}%`);
+
+      // Save anomaly if prediction < 93%
+      if (predictionValue.toFixed(2) < 93) {
+        const anomaly = new HealthAnomaly({
+          UDI: data.UDI,
+          product_id: data["Product ID"],
+          type: data.Type,
+          air_temperature: parseFloat(data["Air temperature [K]"]),
+          process_temperature: parseFloat(data["Process temperature [K]"]),
+          rotational_speed: parseFloat(data["Rotational speed [rpm]"]),
+          torque: parseFloat(data["Torque [Nm]"]),
+          tool_wear: parseFloat(data["Tool wear [min]"]),
+          prediction: predictionValue,
+          timestamp: new Date(data.timestamp),
+        });
+
+        await anomaly.save();
+        console.log('🚨 Anomaly saved to DB (healthanomalies)');
+      }
+
+    } else {
+      console.error('❌ No prediction returned:', response.data);
+    }
+
+    // Update latestData (optional real-time logic)
+    latestData = {
+      ...predictionInput,
+      product_id: data["Product ID"],
+      type: data.Type,
+      timestamp: new Date(data.timestamp),
+    };
+
+  } catch (err) {
+    console.error('❌ Error in WebSocket handler:', err.message);
+  }
+});
+app.get('/api/healthanomalies', async (req, res) => {
+  try {
+    const anomalies = await HealthAnomaly.find().sort({ timestamp: -1 }); // newest first
+    res.status(200).json(anomalies);
+  } catch (error) {
+    console.error('❌ Error fetching anomalies:', error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 app.listen(port, () => {
