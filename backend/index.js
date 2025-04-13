@@ -83,7 +83,6 @@ function connectWebSocket() {
 
         // Send data for prediction (assuming FastAPI is running on a different service)
         const predictionInput = {
-          "UDI": data.UDI,
           "Type": data.Type,
           "Air temperature [K]": data["Air temperature [K]"],
           "Process temperature [K]": data["Process temperature [K]"],
@@ -149,7 +148,7 @@ saveRealTimeData('CNC');
 
 function connectWeldingSocket() {
   try {
-    const weldingWS = new WebSocket(`${process.env.STREAM_WS_URI}/welding`);
+    const weldingWS = new WebSocket(`${process.env.STREAM_WS_URI}/velding`);
 
     weldingWS.on('open', () => {
       console.log('🔧 Connected to Welding WebSocket');
@@ -269,13 +268,16 @@ function connectPumpSocket() {
           noise_level_db: data["noise_level_db"],
           oil_viscosity: data["oil_viscosity"],
         };
+        // console.log(predictionInput,"predictionInput welding");
 
         const response = await axios.post('http://34.59.81.216:3000/getPred/pump/', predictionInput);
+
 
         if (response.data && response.data.prediction !== undefined) {
           const predictionValue = response.data.prediction;
           const status = response.data.status;
           const diagnosis = response.data.diagnosis;
+console.log(diagnosis,"ggg");
 
           // If prediction < 93%, save anomaly to DB
           if (predictionValue < 93) {
